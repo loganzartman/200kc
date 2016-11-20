@@ -7,14 +7,28 @@
 #include "particles.h"
 #include "graphics.h"
 
+#define INV255 1.0f/255.0f
+
 float *particles_data;
+unsigned char *color_map;
 float particles_gravity[] = {0.0f, 1.0f};
 int particles_idx;
 
 void particles_init() {
 	//todo: handle malloc error
 	particles_data = calloc(PART_N * PART_NPROPS, sizeof(float));
+	color_map = calloc(PART_N * 4, sizeof(char));
 	particles_idx = 0;
+
+	//generate particle colors
+	for (int i=0,j=PART_N*4; i<j; i+=4) {
+		float frac = ((float)i)/PART_N/4;
+		int color = gfx_getHSL(frac);
+		color_map[i + CR] = (color >> 16) & 0xFF;
+		color_map[i + CG] = (color >> 8) & 0xFF;
+		color_map[i + CB] = color & 0xFF;
+		color_map[i + CA] = 127;
+	}
 }
 
 void particles_step(float timescale) {
@@ -36,8 +50,9 @@ void particles_step(float timescale) {
 	}
 
 	//update
-	for (int i=0, j=PART_N*PART_NPROPS; i<j; i+=PART_NPROPS) {
-		if (particles_data[i + PART_ALIVE]) {
+	for (int i=0, j=PART_N; i<j; i++) {
+		int pidx = i * PART_NPROPS;
+		if (particles_data[pidx + PART_ALIVE]) {
 			particle_step(i, timescale);
 		}
 	}
@@ -60,7 +75,9 @@ void particle_new(float x, float y, float vx, float vy) {
 	particles_idx = (particles_idx+1)%PART_N;
 }
 
-void particle_step(int base_idx, float timescale) {
+void particle_step(int i, float timescale) {
+	int base_idx = i * PART_NPROPS;
+
 	//integrate velocity
 	particles_data[base_idx + PART_X] += particles_data[base_idx + PART_VX] * timescale;
 	particles_data[base_idx + PART_Y] += particles_data[base_idx + PART_VY] * timescale;
@@ -78,13 +95,20 @@ void particle_step(int base_idx, float timescale) {
 	}
 
 	//draw
+	//bounds check
 	int pidx = (((int)y)*gfx_dim.w + (int)x)<<2;
 	if (pidx < 0 || pidx >= gfx_dim.w*gfx_dim.h*4)
 		return;
-	float red = blend_buffer[pidx + CR] += 30;
-	float grn = blend_buffer[pidx + CG] += 70;
-	float blu = blend_buffer[pidx + CB] += 10;
+
+	//blending
+	int mapidx = i << 2;
+	int alpha_val = color_map[mapidx + CA];
+	float red = blend_buffer[pidx + CR] += (color_map[mapidx + CR] * alpha_val) * INV255;
+	float grn = blend_buffer[pidx + CG] += (color_map[mapidx + CG] * alpha_val) * INV255;
+	float blu = blend_buffer[pidx + CB] += (color_map[mapidx + CB] * alpha_val) * INV255;
 	float alp = 255;
+
+	//write pixels
 	pixels[pidx + CR] = (int)MIN(255,red);
 	pixels[pidx + CG] = (int)MIN(255,grn);
 	pixels[pidx + CB] = (int)MIN(255,blu);

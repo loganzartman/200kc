@@ -17,4 +17,4 @@ int gfx_init();
 void gfx_destroy();
 void gfx_draw();
 void gfx_resize(int width, int height);
-void gfx_setDrawHue(SDL_Renderer *rnd, float hue);
+int gfx_getHSL(float hue);

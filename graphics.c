@@ -84,7 +84,7 @@ void gfx_destroy() {
 	SDL_Quit();
 }
 
-void gfx_setDrawHue(SDL_Renderer *rnd, float hue) {
+int gfx_getHSL(float hue) {
 	const float THIRD = 1.0f/3.0f;
 	hue -= (int)hue;
 	float r,g,b,hf;
@@ -106,5 +106,5 @@ void gfx_setDrawHue(SDL_Renderer *rnd, float hue) {
 		g = 0;
 		b = MIN(1, 2-hf);
 	}
-	SDL_SetRenderDrawColor(rnd, (int)(r*250), (int)(g*120), (int)(b*250), 255);
+	return ((int)(r*255)<<16) | ((int)(g*255)<<8) | (int)(b*255);
 }
