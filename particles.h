@@ -42,7 +42,7 @@ void particle_new(float x, float y, float vx, float vy);
  * Advance the simulation of a single particle.
  * Called by particles_step
  */
-void particle_step(int base_idx, float timescale);
+void particle_step(int base_idx, float timescale, float t);
 
 /**
  * Calculates the speed of a given particle.

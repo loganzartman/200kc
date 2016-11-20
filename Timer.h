@@ -5,6 +5,7 @@
 
 typedef struct Timer {
 	unsigned int t0;
+	unsigned int t;
 } Timer;
 
 #endif

@@ -15,7 +15,6 @@
 const int GAME_FPS = 60;
 bool game_running = true;
 SDL_Event event;
-Timer game_timer;
 float px, py;
 
 int main(int argc, char *argv[]) {

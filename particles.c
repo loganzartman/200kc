@@ -6,14 +6,17 @@
 #include "util.h"
 #include "particles.h"
 #include "graphics.h"
+#include "game.h"
 
 // #define FAST_BLENDING
+#define GAMMA 1.4
 #define INV255 1.0f/255.0f
 #define TRAIL_QUALITY 4
 
 float *particles_data;
 unsigned char *color_map;
 float particles_gravity[] = {0.0f, 0.65f};
+float particles_wind = 0.35f;
 int particles_idx;
 
 void particles_init() {
@@ -52,10 +55,11 @@ void particles_step(float timescale) {
 	}
 
 	//update
+	float t = game_timer.t;
 	for (int i=0, j=PART_N; i<j; i++) {
 		int pidx = i * PART_NPROPS;
 		if (particles_data[pidx + PART_ALIVE]) {
-			particle_step(i, timescale);
+			particle_step(i, timescale, t);
 		}
 	}
 
@@ -77,21 +81,23 @@ void particle_new(float x, float y, float vx, float vy) {
 	particles_idx = (particles_idx+1)%PART_N;
 }
 
-void particle_step(int i, float timescale) {
+void particle_step(int i, float timescale, float t) {
 	int base_idx = i * PART_NPROPS;
 	int w = gfx_dim.w, h = gfx_dim.h;
 
 	//integrate velocity
-	particles_data[base_idx + PART_X] += particles_data[base_idx + PART_VX] * timescale;
-	particles_data[base_idx + PART_Y] += particles_data[base_idx + PART_VY] * timescale;
+	float x = particles_data[base_idx + PART_X] += particles_data[base_idx + PART_VX] * timescale;
+	float y = particles_data[base_idx + PART_Y] += particles_data[base_idx + PART_VY] * timescale;
+
+	//wind
+	float wx = qsin(y*0.012 + t*0.00124) * 2.5 * particles_wind;
+	float wy = qsin(x*0.02 + t*0.00124) * particles_wind;
 
 	//integrate acceleration
-	particles_data[base_idx + PART_VX] += particles_gravity[0] * timescale;
-	particles_data[base_idx + PART_VY] += particles_gravity[1] * timescale;
+	particles_data[base_idx + PART_VX] += (particles_gravity[0] + wx) * timescale;
+	particles_data[base_idx + PART_VY] += (particles_gravity[1] + wy) * timescale;
 
 	//bounds check
-	float x = particles_data[base_idx + PART_X];
-	float y = particles_data[base_idx + PART_Y];
 	if (x<0 || y<0 || x>=w || y>=h) {
 		particles_data[base_idx + PART_ALIVE] = 0;
 		return;
@@ -108,7 +114,7 @@ void particle_step(int i, float timescale) {
 	//precalculation for blending
 	int mapidx = i << 2;
 	int alpha_val = color_map[mapidx + CA];
-	float density = 2 / (len / TRAIL_QUALITY);
+	float density = GAMMA / (len / TRAIL_QUALITY);
 	float alpha_adj = alpha_val * density;
 	float red = color_map[mapidx + CR] * alpha_adj * INV255;
 	float grn = color_map[mapidx + CG] * alpha_adj * INV255;
