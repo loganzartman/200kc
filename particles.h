@@ -4,7 +4,7 @@
 
 #ifndef PARTICLE_GUARD
 #define PARTICLE_GUARD
-#define PART_N 200000
+#define PART_N 150000
 #define PART_NPROPS 5
 #define PART_ALIVE 0
 #define PART_X 1

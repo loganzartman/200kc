@@ -100,7 +100,7 @@ void game_loop(float timescale) {
 		dx = nx - px;
 		dy = ny - py;
 		len = sqrt(dx*dx + dy*dy);
-		vm = 0.45;
+		vm = 0.35;
 	}
 
 	//demo mode
@@ -125,12 +125,12 @@ void game_loop(float timescale) {
 		float yy = y + dy * i / len; //calculate current y
 
 		//make 5 particles
-		for (int j=0; j<50; j++) {
+		for (int j=0; j<25; j++) {
 			//calculate a random velocity vector
 			float d = randfl(0, 6.28);
 			float s = randfl(0.2, 0.8);
 
-			float rd0 = randfl(-0.4,0.4); //random variation to base direction
+			float rd0 = randfl(-0.3,0.3); //random variation to base direction
 			float rs = randfl(0.5,1.0); //random variation to base speed
 
 			//calculate velocity as sum of random vector and base direction and speed

@@ -7,11 +7,13 @@
 #include "particles.h"
 #include "graphics.h"
 
+// #define FAST_BLENDING
 #define INV255 1.0f/255.0f
+#define TRAIL_QUALITY 4
 
 float *particles_data;
 unsigned char *color_map;
-float particles_gravity[] = {0.0f, 1.0f};
+float particles_gravity[] = {0.0f, 0.65f};
 int particles_idx;
 
 void particles_init() {
@@ -27,7 +29,7 @@ void particles_init() {
 		color_map[i + CR] = (color >> 16) & 0xFF;
 		color_map[i + CG] = (color >> 8) & 0xFF;
 		color_map[i + CB] = color & 0xFF;
-		color_map[i + CA] = 127;
+		color_map[i + CA] = 255;
 	}
 }
 
@@ -77,6 +79,7 @@ void particle_new(float x, float y, float vx, float vy) {
 
 void particle_step(int i, float timescale) {
 	int base_idx = i * PART_NPROPS;
+	int w = gfx_dim.w, h = gfx_dim.h;
 
 	//integrate velocity
 	particles_data[base_idx + PART_X] += particles_data[base_idx + PART_VX] * timescale;
@@ -89,30 +92,58 @@ void particle_step(int i, float timescale) {
 	//bounds check
 	float x = particles_data[base_idx + PART_X];
 	float y = particles_data[base_idx + PART_Y];
-	if (x<0 || y<0 || x>=gfx_dim.w || y>=gfx_dim.h) {
+	if (x<0 || y<0 || x>=w || y>=h) {
 		particles_data[base_idx + PART_ALIVE] = 0;
 		return;
 	}
 
 	//draw
-	//bounds check
-	int pidx = (((int)y)*gfx_dim.w + (int)x)<<2;
-	if (pidx < 0 || pidx >= gfx_dim.w*gfx_dim.h*4)
-		return;
+	float xx = x, yy = y;
+	float dx = particles_data[base_idx + PART_VX];
+	float dy = particles_data[base_idx + PART_VY];
+	float len = MAX(1, sqrt(dx * dx + dy * dy));
+	dx /= len;
+	dy /= len;
 
-	//blending
+	//precalculation for blending
 	int mapidx = i << 2;
 	int alpha_val = color_map[mapidx + CA];
-	float red = blend_buffer[pidx + CR] += (color_map[mapidx + CR] * alpha_val) * INV255;
-	float grn = blend_buffer[pidx + CG] += (color_map[mapidx + CG] * alpha_val) * INV255;
-	float blu = blend_buffer[pidx + CB] += (color_map[mapidx + CB] * alpha_val) * INV255;
+	float density = 2 / (len / TRAIL_QUALITY);
+	float alpha_adj = alpha_val * density;
+	float red = color_map[mapidx + CR] * alpha_adj * INV255;
+	float grn = color_map[mapidx + CG] * alpha_adj * INV255;
+	float blu = color_map[mapidx + CB] * alpha_adj * INV255;
 	float alp = 255;
 
-	//write pixels
-	pixels[pidx + CR] = (int)MIN(255,red);
-	pixels[pidx + CG] = (int)MIN(255,grn);
-	pixels[pidx + CB] = (int)MIN(255,blu);
-	pixels[pidx + CA] = (int)MIN(255,alp);
+	dx *= TRAIL_QUALITY;
+	dy *= TRAIL_QUALITY;
+	for (int i=0, j=MAX(1,len/TRAIL_QUALITY); i<j && xx>=0 && yy>=0 && xx<w && yy<h; i++) {
+		int pidx = (((int)yy)*w + (int)xx)<<2;
+
+		#ifndef FAST_BLENDING
+		//blending
+		float red1 = blend_buffer[pidx + CR] += red;
+		float grn1 = blend_buffer[pidx + CG] += grn;
+		float blu1 = blend_buffer[pidx + CB] += blu;
+
+		//write pixels
+		pixels[pidx + CR] = (int)MIN(255, red1);
+		pixels[pidx + CG] = (int)MIN(255, grn1);
+		pixels[pidx + CB] = (int)MIN(255, blu1);
+		pixels[pidx + CA] = alp;
+		#endif
+
+		#ifdef FAST_BLENDING
+		pixels[pidx + CR] = (int)(pixels[pidx + CR] + red);
+		pixels[pidx + CG] = (int)(pixels[pidx + CG] + grn);
+		pixels[pidx + CB] = (int)(pixels[pidx + CB] + blu);
+		pixels[pidx + CA] = alp;
+		#endif
+
+		//move
+		xx += dx;
+		yy += dy;
+	}
 }
 
 float particle_speed(int base_idx) {

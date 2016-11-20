@@ -1,4 +1,4 @@
-CC = gcc -std=c99 -g
+CC = gcc -std=c99 -Ofast
 
 ifeq ($(OS), Windows_NT)
 	LIBS = -lmingw32 -lSDL2main -lSDL2
