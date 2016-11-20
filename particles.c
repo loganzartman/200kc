@@ -29,9 +29,10 @@ void particles_step(float timescale) {
 	);
 	pixels = (char*)temp;
 
-	//clear pixel buffer
+	//clear pixel buffer and blending buffer
 	for (int i=0, j=gfx_dim.w*gfx_dim.h*4; i<j; i++) {
 		pixels[i] = 0;
+		blend_buffer[i] = 0;
 	}
 
 	//update
@@ -80,10 +81,14 @@ void particle_step(int base_idx, float timescale) {
 	int pidx = (((int)y)*gfx_dim.w + (int)x)<<2;
 	if (pidx < 0 || pidx >= gfx_dim.w*gfx_dim.h*4)
 		return;
-	pixels[pidx + CR] = 0;
-	pixels[pidx + CG] = 255;
-	pixels[pidx + CB] = 0;
-	pixels[pidx + CA] = 255;
+	float red = blend_buffer[pidx + CR] += 30;
+	float grn = blend_buffer[pidx + CG] += 70;
+	float blu = blend_buffer[pidx + CB] += 10;
+	float alp = 255;
+	pixels[pidx + CR] = (int)MIN(255,red);
+	pixels[pidx + CG] = (int)MIN(255,grn);
+	pixels[pidx + CB] = (int)MIN(255,blu);
+	pixels[pidx + CA] = (int)MIN(255,alp);
 }
 
 float particle_speed(int base_idx) {

@@ -62,6 +62,9 @@ void gfx_resize(int width, int height) {
 		width, height
 	);
 
+	//create blending buffer
+	blend_buffer = calloc(gfx_dim.w * gfx_dim.h * 4, sizeof(float));
+
 	printf("resized to %dx%d\n", width, height);
 }
 
@@ -75,6 +78,7 @@ void gfx_draw() {
 }
 
 void gfx_destroy() {
+	free(blend_buffer);
 	SDL_DestroyRenderer(gfx_rnd);
 	SDL_DestroyWindow(gfx_win);
 	SDL_Quit();

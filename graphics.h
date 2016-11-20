@@ -9,6 +9,7 @@
 SDL_Rect gfx_dim;
 SDL_Texture *pixel_buffer;
 char *pixels;
+float *blend_buffer;
 
 #endif
 
