@@ -19,7 +19,7 @@ int gfx_init() {
 	gfx_dim.w = 800;
 	gfx_dim.h = 600;
 	gfx_win = SDL_CreateWindow(
-		"Hello SDL!",
+		"Particles",
 		SDL_WINDOWPOS_CENTERED,
 		SDL_WINDOWPOS_CENTERED,
 		gfx_dim.w, gfx_dim.h,
@@ -62,9 +62,6 @@ void gfx_resize(int width, int height) {
 		width, height
 	);
 
-	//create blending buffer
-	blend_buffer = calloc(gfx_dim.w * gfx_dim.h * 4, sizeof(float));
-
 	printf("resized to %dx%d\n", width, height);
 }
 
@@ -78,7 +75,6 @@ void gfx_draw() {
 }
 
 void gfx_destroy() {
-	free(blend_buffer);
 	SDL_DestroyRenderer(gfx_rnd);
 	SDL_DestroyWindow(gfx_win);
 	SDL_Quit();

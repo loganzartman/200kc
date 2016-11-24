@@ -124,7 +124,7 @@ void game_loop(float timescale) {
 		float yy = y + dy * i / len; //calculate current y
 
 		//make 5 particles
-		for (int j=0; j<25; j++) {
+		for (int j=0; j<35; j++) {
 			//calculate a random velocity vector
 			float d = randfl(0, 6.28);
 			float s = randfl(0.2, 0.8);

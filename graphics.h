@@ -8,8 +8,7 @@
 
 SDL_Rect gfx_dim;
 SDL_Texture *pixel_buffer;
-char *pixels;
-int *blend_buffer;
+uint8_t *pixels;
 
 #endif
 

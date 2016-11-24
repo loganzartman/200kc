@@ -8,13 +8,12 @@
 #include "graphics.h"
 #include "game.h"
 
-// #define FAST_BLENDING
-#define GAMMA 1.4
-#define INV255 1.0f/255.0f
+#define GAMMA 1
+#define INV255 0.00392156862f
 #define TRAIL_QUALITY 4
 
 float *particles_data;
-unsigned char *color_map;
+uint8_t *color_map;
 float particles_gravity[] = {0.0f, 0.65f};
 float particles_wind = 0.35f;
 int particles_idx;
@@ -22,13 +21,15 @@ int particles_idx;
 void particles_init() {
 	//todo: handle malloc error
 	particles_data = calloc(PART_N * PART_NPROPS, sizeof(float));
-	color_map = calloc(PART_N * 4, sizeof(char));
+	color_map = calloc(PART_N * 4, sizeof(uint8_t));
 	particles_idx = 0;
 
 	//generate particle colors
 	for (int i=0,j=PART_N*4; i<j; i+=4) {
 		float frac = ((float)i)/PART_N/4;
 		int color = gfx_getHSL(frac);
+
+		//unpack and store
 		color_map[i + CR] = (color >> 16) & 0xFF;
 		color_map[i + CG] = (color >> 8) & 0xFF;
 		color_map[i + CB] = color & 0xFF;
@@ -37,7 +38,7 @@ void particles_init() {
 }
 
 void particles_step(float timescale) {
-	//lock particle texture
+	//lock particle texture to allow modification
 	void *temp;
 	int pitch;
 	SDL_LockTexture(
@@ -46,12 +47,11 @@ void particles_step(float timescale) {
 		&temp,
 		&pitch
 	);
-	pixels = (char*)temp;
+	pixels = (uint8_t*)temp;
 
 	//clear pixel buffer and blending buffer
 	for (int i=0, j=gfx_dim.w*gfx_dim.h*4; i<j; i++) {
-		pixels[i] = 0;
-		blend_buffer[i] = 0;
+		pixels[i] /= 2;
 	}
 
 	//update
@@ -103,7 +103,7 @@ void particle_step(int i, float timescale, float t) {
 		return;
 	}
 
-	//draw
+	//determine movement for rendering motion blur
 	float xx = x, yy = y;
 	float dx = particles_data[base_idx + PART_VX];
 	float dy = particles_data[base_idx + PART_VY];
@@ -111,47 +111,43 @@ void particle_step(int i, float timescale, float t) {
 	dx /= len;
 	dy /= len;
 
-	//precalculation for blending
-	int mapidx = i << 2;
+	//precalculation for rendering
+	int mapidx = i << 2; //colormap index
 	int alpha_val = color_map[mapidx + CA];
-	float density = GAMMA / (len / TRAIL_QUALITY);
-	float alpha_adj = alpha_val * density;
-	float red = color_map[mapidx + CR] * alpha_adj * INV255;
-	float grn = color_map[mapidx + CG] * alpha_adj * INV255;
-	float blu = color_map[mapidx + CB] * alpha_adj * INV255;
-	float alp = 255;
 
+	//decrease intensity when more pixels are drawn per particle
+	float density = GAMMA / (len / TRAIL_QUALITY); 
+	float alpha_adj = alpha_val * density * INV255;
+	
+	//calculate color of this particle
+	uint8_t red = (uint8_t)(MIN(255, color_map[mapidx + CR] * alpha_adj));
+	uint8_t grn = (uint8_t)(MIN(255, color_map[mapidx + CG] * alpha_adj));
+	uint8_t blu = (uint8_t)(MIN(255, color_map[mapidx + CB] * alpha_adj));
+	uint8_t alp = 255;
+
+	//increase motion blur step size for lower quality
 	dx *= TRAIL_QUALITY;
 	dy *= TRAIL_QUALITY;
+
+	//render particle with motion blur
 	for (int i=0, j=MAX(1,len/TRAIL_QUALITY); i<j && xx>=0 && yy>=0 && xx<w && yy<h; i++) {
+		//calculate index in pixel buffer
 		int pidx = (((int)yy)*w + (int)xx)<<2;
 
-		#ifndef FAST_BLENDING
-		//blending
-		float red1 = blend_buffer[pidx + CR] += red;
-		float grn1 = blend_buffer[pidx + CG] += grn;
-		float blu1 = blend_buffer[pidx + CB] += blu;
+		//add buffered color and new pixel color
+		uint16_t ar = pixels[pidx + CR] + red;
+		uint16_t ag = pixels[pidx + CG] + grn;
+		uint16_t ab = pixels[pidx + CB] + blu;
 
-		//write pixels
-		pixels[pidx + CR] = (int)MIN(255, red1);
-		pixels[pidx + CG] = (int)MIN(255, grn1);
-		pixels[pidx + CB] = (int)MIN(255, blu1);
+		//write blended color to buffer
+		//uses branchless method to clip values greater than 255
+		pixels[pidx + CR] = (uint8_t)(((!!(ar >> 8))*255) | (uint8_t)ar);
+		pixels[pidx + CG] = (uint8_t)(((!!(ag >> 8))*255) | (uint8_t)ag);
+		pixels[pidx + CB] = (uint8_t)(((!!(ab >> 8))*255) | (uint8_t)ab);
 		pixels[pidx + CA] = alp;
-		#endif
-
-		#ifdef FAST_BLENDING
-		pixels[pidx + CR] = (int)(pixels[pidx + CR] + red);
-		pixels[pidx + CG] = (int)(pixels[pidx + CG] + grn);
-		pixels[pidx + CB] = (int)(pixels[pidx + CB] + blu);
-		pixels[pidx + CA] = alp;
-		#endif
 
 		//move
 		xx += dx;
 		yy += dy;
 	}
-}
-
-float particle_speed(int base_idx) {
-	return 0;
 }

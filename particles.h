@@ -12,14 +12,6 @@
 #define PART_VX 3
 #define PART_VY 4
 
-vector* particles_list;
-
-typedef struct particle {
-	float x, y;
-	float vx, vy;
-	bool dead;
-} particle;
-
 /**
  * Initializes the particle system
  */
@@ -44,8 +36,4 @@ void particle_new(float x, float y, float vx, float vy);
  */
 void particle_step(int base_idx, float timescale, float t);
 
-/**
- * Calculates the speed of a given particle.
- */
-float particle_speed(int base_idx);
 #endif
